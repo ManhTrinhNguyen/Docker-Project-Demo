@@ -2,6 +2,8 @@
 
 - [Docker Compose Project](#Docker-Compose-Project)
 
+- [Build Dockerfile](#Build-Dockerfile)
+
 ## Docker Project For Local Development 
 
 <img width="600" alt="Screenshot 2025-06-06 at 12 37 25" src="https://github.com/user-attachments/assets/50d39c6a-3ee5-4582-9940-69d015b582b2" />
@@ -171,5 +173,111 @@ To start docker compose `docker-compose -f <docker-compose file> up`
 
 To stop docker compose `docker-compose -f <docker-compose file> down`
 
+## Build Dockerfile 
 
+Dockerize Nodejs application and push to private Docker registry
+
+Technologies used:
+
+- Docker, Node.js
+  
+Project Description:
+
+- Write Dockerfile to build a Docker image for a Nodejs application
+
+- Create private Docker registry on AWS (Amazon ECR)
+
+- Push Docker image to this private repository
+
+To Deploy my application should be packaged into its own docker container . This mean we will build a Docker Image by using Dockerfile 
+
+#### What is Dockerfile 
+
+In order to build a Docker image from an application we basically have to copy the contents of that application into the Dockefile could be an artifact that we built in this case we just have 3 files so we copy directly in the image and we will configure it . In order to do that we will use a Blueprint of create Docker image called Dockerfile
+
+- Copy Artifact (war, jar, bundle.js)
+
+**Syntax of Dockefile**:
+
+`FROM image`: Whatever Image we building we want to base it on another image . In this case we have Javascript app with Nodejs backend so that it can run our node application instead of basing it on a Linux Alpine or some other lower level and we have to install node on it (https://hub.docker.com/_/node)
+
+- This mean base on our `Node` image we will have node install inside of our image
+
+`ENV` We can configure ENV inside of Dockerfile (But should configure ENV outside Dockerfile. More Flexible) 
+
+`RUN` I can execute any kind of Linux commands inside of the Container not on the host  
+
+`COPY <src> to <dest>` : This execute on the host . 
+
+- src: Is from the host
+
+- dest: Inside the container
+
+`WORKDIR`: Set a default directory inside the Docker container . (So I don't have to specify absolute path inside docker container)  
+
+`CMD` : Execute an entry point Linux Command 
+
+- Different between `RUN` and `CMD` . I can have multiple `RUN` command but I can only have 1 entry point which is `CMD`
+
+**Create Dockerfile**
+
+`FROM node:24-alpine` : Since we saw Dockerfile is a blueprint for any Docker image that should acutally mean that every Docker image that there is on Dockerhub should be built on its own Dockerfile 
+
+- Every Image is based off another base image
+
+`RUN npm install`: The reason we run npm install is that instead of taking the `node_modules` that we have on our host inside the project and copy it into the image we want to execute npm install and generate that `node_modules` with  all the dependencies inside while creating the Docker image to make sure we have the most up to date version 
+
+Once  I created my Dockerfile I can start to build it 
+
+**Image Layer**
+
+Our own image that we are build `nodejs-app:1.0` will be based on Node Image with specific version `node:24-alpine` . 
+
+And the `node:24-alpine` image is base on `alpine:3.17` image 
+
+Alpine is a lightweight Linux Image that we install Node on top of and then we install our own application on top of that Node image 
+
+**Build Dockerfile**
+
+To build Docker file : `docker build -t nodejs-app:1.0 .`
+
+To docker build command we have to provide 2 parameters 
+
+- 1 is we want to give our image a name and a tag
+
+- 2 location of dockerfile . In this case we are in the same folder so I could do `.`
+
+To see my images `docker images`
+
+To delete Image `docker rmi <image-id>`
+
+IF image is being used I can not delete that. To see if it being used  `docker ps -a`
+
+Then to remove that container `docker rm <container-id>`
+
+To check inside the container `docker exec -it <container-id> /bin/bash` 
+
+Some container don't have `bash` I can do `docker exec -it <container-id> /bin/sh` 
+
+**Never run as Root User**
+
+Now when we create this Image and run it as a Container Which OS user will be use to start the Application inside ?
+
+By default Dockerfile does not specify a user it uses a Root User . But in reality never should run Application as Root User
+
+The Solution is to create dedicate User with a dedicated Group in Docker Image to run Application 
+
+With `node:24-alpine` image `groupadd` and `useradd` do not exist in `Alpine` by default.
+
+- I need to install `shadow` package to get groupadd and useradd `RUN apk add --no-cache shadow`
+  
+To create user and group in Image : `RUN groupadd -r tim && useradd -g tim tim`.
+
+Then I set ownership and permission to that user : `RUN chown -R tim:tim /app`
+
+Then I switch to that User : `USER tim`
+
+Then I run the App : `CMD ["node", "server.js"]`
+
+To check it work can go inside the container `docker exec -it <container-id> /bin/sh` and use command `whoami` It will appear `tim`
 
