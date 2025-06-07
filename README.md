@@ -170,4 +170,6 @@ To start docker compose `docker-compose -f <docker-compose file> up`
 - To check network `docker network ls`
 
 To stop docker compose `docker-compose -f <docker-compose file> down`
-To stop docker compose `docker-compose -f <docker-compose file> down`
+
+
+
