@@ -1,11 +1,7 @@
 version: '3'
 services:
-  # my-app:
-    # image: ${docker-registry}/my-app:1.0
-    # ports:
-     # - 3000:3000
-  mongodb:
-    image: mongo
+  mongodb: # container name 
+    image: mongo # Image of the container 
     ports:
      - 27017:27017
     environment:
@@ -22,8 +18,19 @@ services:
      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
      - ME_CONFIG_MONGODB_ADMINPASSWORD=password
      - ME_CONFIG_MONGODB_SERVER=mongodb
+     - ME_CONFIG_BASICAUTH_USERNAME=user
+     - ME_CONFIG_BASICAUTH_PASSWORD=pass
     depends_on:
      - "mongodb"
+  nodejs-app:
+    image: nodejs 
+    depends_on:
+      - "mongodb"
+    ports:
+     - 3000:3000
+    environment:
+      - MONGO_DB_USERNAME=admin
+      - MONGO_DB_PWD=password
 volumes:
   mongo-data:
     driver: local
