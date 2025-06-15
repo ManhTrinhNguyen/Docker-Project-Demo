@@ -28,6 +28,10 @@
  
   - [Pull Docker Image from Nexus](#Pull-Docker-Image-from-Nexus)
 
+- [Deploy Nexus as Docker container](#Deploy-Nexus-as-Docker-container)
+
+- [Docker Best Practice](#Docker-Best-Practice)
+
 ## Docker Project For Local Development 
 
 <img width="600" alt="Screenshot 2025-06-06 at 12 37 25" src="https://github.com/user-attachments/assets/50d39c6a-3ee5-4582-9940-69d015b582b2" />
@@ -669,3 +673,174 @@ Once I execute it I should have a `items`
 <img width="600" alt="Screenshot 2025-06-15 at 14 17 13" src="https://github.com/user-attachments/assets/45cea9fe-fc87-47e9-b377-fbbbe4a51a60" />
 
 This way I can retrive the Docker Images from endpoint with some information 
+
+## Deploy Nexus as Docker container
+
+Demo Project:
+
+- Deploy Nexus as Docker container
+
+Technologies used:
+
+- Docker, Nexus, DigitalOcean, Linux
+  
+Project Description:
+
+- Create and Configure Droplet
+
+- Set up and run Nexus as a Docker container
+
+----
+
+I will create another Server to run Nexus as a Docker Container 
+
+I need to configure Firewall so correct Port are open for Docker and Nexus . 
+
+<img width="600" alt="Screenshot 2025-06-15 at 14 25 27" src="https://github.com/user-attachments/assets/60714a41-ea11-4841-bed3-3a9beec8300e" />
+
+SSH to Server `ssh root@ipaddress`
+
+In this Server I only need Docker to be installed 
+
+- `apt update` to update a server package manager
+
+- `snapp install docker`
+
+This is a Nexus Image (https://hub.docker.com/r/sonatype/nexus)
+
+Create a volume to persist data: `docker volume create --name nexus-data`
+
+Run Nexus container : `docker run -d -p 8081:8081 --name nexus -v nexus-data:/nexus-data sonatype/nexus3`
+
+- `-d` : Detached mode
+
+- `-p 8081:8081`: make accessible at port 8081
+
+- `-v nexus-data:/nexus-data`: This is a name volume
+
+- `sonatype/nexus3`: This is Image Name
+
+ To see whether the port is open : `netstat -lnpt`
+
+ Now I can see the port 8081 opened
+
+ <img width="600" alt="Screenshot 2025-06-15 at 14 34 30" src="https://github.com/user-attachments/assets/7a87a0d5-9911-4bc5-be2f-44757c6c8f98" /> 
+
+I can go to Nexus UI `<droplet-ip>:8081`
+
+To see acutal location of where this data is store on my server file system `docker volume ls` 
+
+Then I can see a list of volume name then I can do `docker inspect <volume-name>` It will give me some more information about the volume . Including the actual physical path where that volume is located 
+
+<img width="600" alt="Screenshot 2025-06-15 at 14 38 59" src="https://github.com/user-attachments/assets/a02ab5ab-28fd-4b5b-99ed-b637f3cb8eef" />
+
+<img width="600" alt="Screenshot 2025-06-15 at 14 40 22" src="https://github.com/user-attachments/assets/4774275c-0750-45c4-8670-79f87338b88f" />
+
+## Docker Best Practice 
+
+**Best Practice 1**
+
+```
+  - Use Official Base Image as Base Image 
+```
+
+**Best Practice 2**
+
+```
+  - User Specific Version 
+```
+
+**Best Practice 3**
+
+```
+  - Use smaller Image for Less Storage, Transfer faster
+
+  - Choose Smaller Image with Leaner OS Distribution with only bundle nessesary utilities 
+
+  ----Issue with full-blown Images----
+
+  - Security Issue . Easier to attack
+
+  - Larger size will transfer slower
+
+  - So the Best practice choose a Image with specific Version based on a leaner OS Distribution like Alpine 
+```
+
+**Best Practice 4**
+
+```
+  - Optimizing Caching Image Layer when building a Images
+
+  ----What are Images Layer? and Caching Image Layer mean?----
+
+  - Docker Image built based on Dockerfile . In Dockefile each command or instruction create an Image Layer . So Every Docker Image is made up of Layer . This mean when I use a base Image like : Node:alpine, It already built base on a lot of Layers. This is how Image created using multiple Layer
+
+  - Each Layer will get Cache by Docker . If I rebuild a Image and Dockerfile hasn't change so Docker use a Cached Layer to build Image . This make build a Image much faster . Even for pull and push Image .
+
+  ----To Optimizing Caching Image Layer----
+
+  !!! NOTE : When a Layer changed every Layer bellow (Downstream Layers) has to be re-created
+
+  - In some case some Layers Bellow don't need to re-created . So I will re-structure the Dockerfile to Optimizing Caching Image Layer
+
+  - The rules here is I should order my Dockerfile Command from the least to the most frequently change  
+
+```
+
+  - Example of re structure Nodejs Docker file : I Copy only Package.json file then Run npm install and only after that I run a Copy file command . 
+
+  <img width="400" alt="Screenshot 2025-03-14 at 21 11 07" src="https://github.com/user-attachments/assets/73d457f7-5099-46e4-92d8-1e888ceff713" />
+
+  <img width="400" alt="Screenshot 2025-03-14 at 21 12 29" src="https://github.com/user-attachments/assets/105b8c9a-6f5e-4651-9459-a144cba3a74a" />
+
+**Best Practice 5**
+
+  - When we build Image we don't need everything inside the Docker Image like : Readme file, Auto generate folder like build, libs ...
+
+  - Use .dockerignore file to explicitly excludes files and folder that I don't need in the Image
+
+**Best Practice 6**
+
+  - Now there is some content or files that I need during build image process but I don't need them in the final Image itsefl to run Application
+
+  - The way it work is while I am building a Image from Dockerfile many artifacts actually get created which are required only during the build time and this could be Dev Tools and Library needed for compiling Application or it could be dependencies need to run Unit test ... . If I keep those files in the final Image eventhough they are not nessesary to run a Application It will increase size of the Image and Increase Attack Surface
+
+  - Example like Package.json or Pom.xml or any other dependencies files which specifi all the dependencies for the project and are needed to install those dependencies . However once the dependencies are installed We don't need this file in the Image itself to run the Application
+
+  - Another example : When building Java Application I need JDK to compile Java source Code but JDK is not needed to run Application itself . In addition to that I may use tool like Gradle or Maven to build Application but are not needed to run the Application
+
+  ----How do I separate Build Stage from Runtime Stage----
+
+  - I use multi Stage build . The multile Stage build allow me to use multiple temporary Images during the build process but keep only the latest image as the final artifact  
+
+<img width="600" alt="Screenshot 2025-03-14 at 21 49 21" src="https://github.com/user-attachments/assets/af13ff3c-c945-414a-8499-d1f93196c399" />
+
+  - In the example above : I have a Build Stage above and the Run Stage bellow . The Build Stage use to build a Maven Package artifact . And the Run Stage Copy Maven Aftifact from the Build Stage and run it . So in the final Image the Build Stage will get removed . Now the Image layer only have 2 in the Run Stage .
+
+**Best Practice 7**
+
+  - Now when we create this Image and run it as a Container Which OS user will be use to start the Application inside ?
+  
+  - By default Dockerfile does not specify a user it uses a Root User . But in reality never should run Application as Root User
+
+  - The Solution is to create dedicate User with a dedicated Group in Docker Image to run Application 
+
+  <img width="600" alt="Screenshot 2025-03-14 at 21 58 48" src="https://github.com/user-attachments/assets/214d310a-eed4-4864-98b3-4b1d04b3f51d" />
+
+  - To create user and group in Image : `RUN groupadd -r tom && useradd -g tom tom`.
+
+  - Then I set ownership and permission to that user : `RUN chown -R tom:tom /app`
+
+  - Then I switch to that User : `USER tom`
+
+  - Then I run the App : `CMD node index.js`
+
+**Best Practice 8**
+
+  - How do I know that the Image has built has few or no security vulnerable ?
+
+  - Using `docker scout cves myapp:1.0` command to scan my Image for Security vulverability
+
+  !!! Note : I have to login to Docker Hub in able to scan Images
+
+  - In the background Docker will scan against its own Database of known vulnerabilities to run vulnerabilities scan on the Image . The Database of known vulnerabilities gets constantly updated, so new one get discover and edit all the time for different Images 
